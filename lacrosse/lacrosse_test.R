@@ -1,17 +1,8 @@
 
 
-require(lacrosse)
+require(dnsfa)
 
-D=30
-N=60
-K=3
-P=5
-iterations=1000
-Bsparsity=0.5
-Gsparsity=0.7
-noise.var=0.1
-plot.flag=F
-debug=T
+test.dnsfa <- function(D=30,N=60,K=3,P=5,iterations=1000,Bsparsity=0.5,Gsparsity=0.7,noise.var=0.1,plot.flag=F,debug=T){
   obsF=matrix(rnorm(P*N), nrow = P, ncol = N)
   B=matrix(rnorm(K*P)* (runif(K * P) < Bsparsity), nrow = K, ncol = P)
   X=B %*% obsF
@@ -31,7 +22,7 @@ debug=T
   settings$predictive.performance=1
   settings$iterations=iterations
   settings$truncate=T
-  settings$initial_size=5
+  settings$initial_size=2
 #  K=0
   init.params=initial.param(N,D,P,settings)
 
@@ -42,7 +33,7 @@ debug=T
   mrf.strengths=lapply(mrf.connections,function(x) as.vector(array(1.0,length(x))))
   settings$mrf.connections=mrf.connections
   settings$mrf.strengths=mrf.strengths
-  res=run.lacrosse(Y = t(Y), X=t(obsF), settings=settings, missing.values = t(mv), init.param = init.params)
+  res=run.nsfa(Y = t(Y), X=t(obsF), settings=settings, missing.values = t(mv), init.param = init.params)
 #  res=run.nsfa(Y = t(Y), X=matrix(0,nrow=N,ncol=K), settings=settings, missing.values = t(mv), init.param = init.params)
   
   # plot some diagnostics
@@ -60,3 +51,13 @@ debug=T
   }
   #heatmap(g,xlab="features",ylab="dimensions",Rowv=NA,Colv=NA,col=col.map,scale="none",main="Best factor loading matrix")
 }	
+  list(res=res,B=B,G=G)
+}
+
+if (!interactive()){
+    res=test.dnsfa(K=6)
+    save(res,file="test.RData")
+}
+
+res=test.dnsfa(K=6, plot.flag = T)
+res$res$best.params
