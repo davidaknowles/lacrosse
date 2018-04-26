@@ -7,8 +7,11 @@ require(doMC)
 #PSet_names = availablePSets() %>% filter(Dataset.Type=="sensitivity") %>% .$PSet.Name %>% as.character()
 PSet_names=c("CCLE","CTRPv2")
 
+scratch_dir=Sys.getenv("SCRATCH")
+print(scratch_dir)
+
 PSets=foreach(PSet_name=PSet_names) %do% {
-  downloadPSet(PSet_name, saveDir="~/PSets/")
+  downloadPSet(PSet_name, saveDir=paste0(scratch_dir,"/PSets/"))
 } %>% set_names(PSet_names)
 
 CTRPv2_auc=summarizeSensitivityProfiles(
