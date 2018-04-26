@@ -27,7 +27,7 @@ y.train=scale(sens[!test,])
 
 suffix=paste("_dnsfa",cv.fold,"alpha",alpha,"mrf",use.mrf,"truncate",truncate,sep="")
 
-require(dnsfa)
+require(lacrosse)
 s=default.settings()
 s$iterations=2000
 s$burn.in=1000
@@ -52,6 +52,6 @@ if (use.mrf) {
     s$feature.mrf.strengths=lapply(s$feature.mrf.connections, function(temp) as.numeric(array(1.0,length(temp))))
 }
 
-r=run.nsfa(y.train,x.train,settings=s)
+r=run.lacrosse(y.train,x.train,settings=s)
 
 save(r,file=paste("results",suffix,".RData",sep=""))
