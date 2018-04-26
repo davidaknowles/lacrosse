@@ -414,10 +414,10 @@ public:
       if (t.sum()==0.0)
 	continue; 
       Matrix<bool,Dynamic,1> z=EigenUtils::double_to_bool(t);
-      if (EigenUtils::binary_sum(z)>1000) {
-	Rcpp::Rcout << "Big! : " << EigenUtils::binary_sum(z) << " ki " << ki << endl;
-	Rcpp::Rcout << "B[ki,]=" << B.row(ki) << endl; 
-      }
+      /* if (EigenUtils::binary_sum(z)>1000) {
+	      Rcpp::Rcout << "Big! : " << EigenUtils::binary_sum(z) << " ki " << ki << endl;
+	      Rcpp::Rcout << "B[ki,]=" << B.row(ki) << endl; 
+      } */
       MatrixXd f=EigenUtils::logical_index_rows(s.F,z); 
       MatrixXd prec=f*f.transpose()*lambda_x[ki];
       int numEl=prec.cols(); 

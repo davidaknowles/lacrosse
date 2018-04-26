@@ -26,11 +26,15 @@ genomic_data=foreach(mDataType=mDataTypes) %dopar% { # "rnaseq"
 
 common_cells=intersect(colnames(CTRPv2_auc), colnames(genomic_data$rna))
 
+rownames( genomic_data$rna ) =PSets$CCLE@molecularProfiles$rna@featureData@data$Symbol
+
 y=CTRPv2_auc[,common_cells] %>% t()
-genomic_data_sub = foreach(gd=genomic_data) %do% {
+genomic_data_sub = foreach(gdn=names(genomic_data)) %do% {
+  gd=genomic_data[[gdn]]
+  rownames(gd)=paste(gdn,rownames(gd),sep=":")
   class(gd)="numeric"
   s=apply(gd,1,function(g) sd(g,na.rm=T))
   gd[ order(-s)[1:1000], ]
-}
+} %>% set_names(mDataTypes)
 x=Reduce(rbind,genomic_data_sub) %>% t()
 x=x[common_cells,]

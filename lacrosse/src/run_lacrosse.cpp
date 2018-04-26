@@ -148,6 +148,7 @@ SEXP run_helper(settings<double> &s, SEXP init_param)
       char buff[200]; 
       sprintf(buff, "%s/sample%d.RData", s.samples_dir.c_str(), i); 
       string mystring=buff; 
+      cout << "Saving sample to " << mystring << endl; 
       List l=params_to_list(p); 
       Environment::global_env().assign("param",l); 
       save("param",Named("file",mystring));
