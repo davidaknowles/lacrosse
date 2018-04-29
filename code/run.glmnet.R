@@ -1,30 +1,33 @@
+source("load_CTRPv2.R")
+args <- commandArgs(trailingOnly = TRUE)
+cv.fold=as.integer(args[1])
 
+require(doMC)
+if (!interactive())  { registerDoMC(20) }
+
+sens=y
+x=scale(x)
+x[is.na(x) | is.nan(x)]=0.0
 
 set.seed(cv.fold)
 n.cell.lines=nrow(sens)
-perm=sample(n.cell.lines)[1:64]
+perm=sample(n.cell.lines)[1:82]
 test=logical(n.cell.lines)
 test[perm]=T
 sens[perm,]=NA
-x=scale(t(as.matrix(features)))
-x[is.na(x) | is.nan(x)]=0.0
+
 x.train=x[!test,]
 y.train=scale(sens[!test,])
 
 require(glmnet)
-res=list()
-
-for (i in 1:ncol(sens)){
+res=foreach (i=1:ncol(sens)) %dopar% {
     print(i)
     y=y.train[,i]
     to.keep=! (is.nan(y) | is.na(y))
-    y.nonan=y[to.keep]
-    x.nonan=x.train[to.keep,]
-    alpha=.8
-    cv.res=cv.glmnet(x.nonan,y.nonan,alpha=alpha)
-    res[[i]]=glmnet(x.nonan,y.nonan,lambda=cv.res$lambda.min,alpha=alpha)
+    alpha=.5
+    cv.glmnet(x.train[to.keep,],y[to.keep],alpha=alpha) %>% coef()
 }
 
-save(res,file=paste("glmnet_single",cv.fold,measure,".RData",sep=""))
+save(res,file=paste0(scratch_dir,"/lacrosse/glmnet_single_",cv.fold,".RData"))
 
 

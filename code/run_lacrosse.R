@@ -18,14 +18,16 @@ if (interactive()){
 source("load_CTRPv2.R")
 
 sens=y
+x=scale(x)
+x[is.na(x) | is.nan(x)]=0.0
+
 set.seed(cv.fold)
 n.cell.lines=nrow(sens)
 perm=sample(n.cell.lines)[1:82]
 test=logical(n.cell.lines)
 test[perm]=T
 sens[perm,]=NA
-x=scale(x)
-x[is.na(x) | is.nan(x)]=0.0
+
 x.train=x[!test,]
 y.train=scale(sens[!test,])
 
@@ -52,7 +54,7 @@ s$alpha=abs(alpha)
 s$store.samples=T
 s$truncate=truncate
 s$initial_size=initial_size
-s$samples.dir=paste("samples",suffix,sep="")
+s$samples.dir=paste(scratch_dir,"/lacrosse/samples",suffix,sep="")
 
 require(stringr)
 if (use.mrf) {

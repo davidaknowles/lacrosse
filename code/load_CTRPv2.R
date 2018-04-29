@@ -7,7 +7,8 @@ require(doMC)
 #PSet_names = availablePSets() %>% filter(Dataset.Type=="sensitivity") %>% .$PSet.Name %>% as.character()
 PSet_names=c("CCLE","CTRPv2")
 
-scratch_dir=Sys.getenv("SCRATCH")
+#scratch_dir=Sys.getenv("SCRATCH")
+scratch_dir="/scratch/users/dak33/"
 print(scratch_dir)
 
 PSets=foreach(PSet_name=PSet_names) %do% {
