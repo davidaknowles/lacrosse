@@ -5,7 +5,6 @@
 # Suleiman Khan (suleiman.khan@helsinki.fi)
 # Muhammad Ammad (muhammad.ammad-ud-din@helsinki.fi )
 
-source("HelpingFunctions.R")
 require("rstan")
 
 init_prior_model_nreg <- function(data,beta = NULL, lambda = NULL, W = NULL, tau = NULL,sigma = NULL)
@@ -26,7 +25,7 @@ init_prior_model_nreg <- function(data,beta = NULL, lambda = NULL, W = NULL, tau
 
 # data$Y : [samples] x [tasks]
 # data$X : list of [samples] x [features]
-runMVSTAN <- function(data)
+runMVSTAN <- function(data, tol_rel_obj = 1e-3,iter = 50000, eval_elbo=1000)
 {
 
   dX = ncol(data$X)
@@ -38,14 +37,21 @@ runMVSTAN <- function(data)
   init.dat = init_prior_model_nreg(data,beta=bp)
 
   print("Compiling Stan...")
-  model = rstan::stan_model(file=list.files(pattern='nreg.stan'));
+  model = rstan::stan_model('nreg.stan');
   
   print("Running Stan...")
   out=1
   counter=1
   class(out)="try-error"
   while(class(out)=="try-error") {
-    out <- try(vb(model, data = data, algorithm = "meanfield",tol_rel_obj = 1e-3,iter = 50000,seed=counter,init = init.dat,eval_elbo=1000))
+    out <- try(vb(model, 
+                  data = data, 
+                  algorithm = "meanfield",
+                  seed=counter,
+                  init = init.dat,
+                  tol_rel_obj=tol_rel_obj,
+                  iter=iter,
+                  eval_elbo=eval_elbo  ))
     counter=counter+1
     if (counter > 5) return(out)
   }
