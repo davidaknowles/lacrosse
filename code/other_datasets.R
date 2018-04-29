@@ -5,7 +5,7 @@ library(PharmacoGx)
 PSet_names=c("CCLE","GDSC1000","CTRPv2")
 
 PSets=foreach(PSet_name=PSet_names) %do% {
-  downloadPSet(PSet_name)
+  downloadPSet(PSet_name, saveDir="~/PSets/")
 } %>% set_names(PSet_names)
 
 GDSC=downloadPSet("GDSC")
