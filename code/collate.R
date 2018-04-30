@@ -10,12 +10,18 @@ n.drugs=ncol(sens)
 require(glmnet)
 
 n.reps=10
-methods=4
+methods=9
 results=data.frame(matrix(NA,ncol=methods,nrow=n.reps))
 train.rmse=data.frame(matrix(NA,ncol=methods,nrow=n.reps))
 rmse=function(err) sqrt(mean(err*err))
 
 lacrosse_dir=paste0(scratch_dir,"/lacrosse/") 
+# 
+# for (cv.fold in 1:n.reps){
+#   fn=paste0(lacrosse_dir,"glmnet_mgaussian/",cv.fold,"_alpha1.RData")
+#   a=load(fn)
+#   saveRDS(., file=fn)
+# }
 
 for (cv.fold in 1:n.reps){
     meth=1
@@ -67,31 +73,41 @@ for (cv.fold in 1:n.reps){
     
     # glmnet per drug
     print("glmnet")
-    load(paste0(lacrosse_dir,"glmnet_single_",cv.fold,".RData"))
     
-    co_matrix=lapply(res, as.numeric) %>% as.data.frame() %>% as.matrix() %>% set_colnames(NULL)
+    foreach(alpha=c(0,0.5,1)) %do% {
+      res=readRDS(paste0(lacrosse_dir,"glmnet_single/",cv.fold,"_alpha",alpha,".RData"))
+      co_matrix=lapply(res, as.numeric) %>% as.data.frame() %>% as.matrix() %>% set_colnames(NULL)
     
-    y.pred=cbind(1, x.test) %*% co_matrix
-    y.pred.train=cbind(1, x.train) %*% co_matrix
+      y.pred=cbind(1, x.test) %*% co_matrix
+      y.pred.train=cbind(1, x.train) %*% co_matrix
     
-    results[cv.fold,meth]=test.calc(y.pred)
-    train.rmse[cv.fold,meth]=train.calc(y.pred.train)
-    
-    colnames(results)[meth]="L1"
-    meth=meth+1
+      results[cv.fold,meth]=test.calc(y.pred)
+      train.rmse[cv.fold,meth]=train.calc(y.pred.train)
+      
+      colnames(results)[meth]=paste0("L1_",alpha)
+      meth=meth+1
+    } 
     
     print("glmnet mgaussian")
-    load(paste0(lacrosse_dir,"glmnet_mgaussian/",cv.fold,".RData"))
-    res=. # well that's unfortunate
-    co_matrix=lapply(res, as.numeric) %>% as.data.frame() %>% as.matrix() %>% set_colnames(NULL)
+    foreach(alpha=c(0,0.5,1)) %do% {
     
-    y.pred=cbind(1, x.test) %*% co_matrix
-    y.pred.train=cbind(1, x.train) %*% co_matrix
+      res=readRDS(paste0(lacrosse_dir,"glmnet_mgaussian/",cv.fold,"_alpha",alpha,".RData"))
+      co_matrix=lapply(res, as.numeric) %>% as.data.frame() %>% as.matrix() %>% set_colnames(NULL)
     
+      y.pred=cbind(1, x.test) %*% co_matrix
+      y.pred.train=cbind(1, x.train) %*% co_matrix
+    
+      results[cv.fold,meth]=test.calc(y.pred)
+      train.rmse[cv.fold,meth]=train.calc(y.pred.train)
+    
+      colnames(results)[meth]=paste0("mgaussian_",alpha)
+      meth=meth+1
+    }
+    
+    print("mvlr")
+    y.pred=readRDS(paste0(lacrosse_dir,"mvlr/",cv.fold,".RData"))
     results[cv.fold,meth]=test.calc(y.pred)
-    train.rmse[cv.fold,meth]=train.calc(y.pred.train)
-    
-    colnames(results)[meth]="mgaussian"
+    colnames(results)[meth]="mvlr"
     meth=meth+1
 
     results[cv.fold,meth]=test.calc(y.adjusted[test,]*0)

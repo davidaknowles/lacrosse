@@ -5,6 +5,7 @@ registerDoMC(cores=10)
 source("kbmtl.R")
 source("load_CTRPv2.R")
 
+sens=y
 x=scale(x)
 x[is.na(x) | is.nan(x)]=0.0
 

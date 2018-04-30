@@ -8,8 +8,8 @@ require(doMC)
 PSet_names=c("CCLE","CTRPv2")
 
 #scratch_dir=Sys.getenv("SCRATCH")
-#scratch_dir="/scratch/users/dak33/"
-scratch_dir="~"
+scratch_dir="/scratch/users/dak33/"
+#scratch_dir="~"
 print(scratch_dir)
 
 PSets=foreach(PSet_name=PSet_names) %do% {
