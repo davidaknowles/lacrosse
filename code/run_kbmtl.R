@@ -63,13 +63,13 @@ results=foreach(cv.fold=1:10) %dopar% {
   Ytrain <- y.train #should be an Ntra x T matrix containing target outputs (contains only real values and NaNs)
   
   #perform training
-  state <- kbmtl_semisupervised_regression_variational_train(Ktrain, Ytrain, parameters)
+  state <- kbmtl_regression_train(Ktrain, Ytrain, parameters)
   
   #initialize the kernel for testing
   Ktest <- gram[!test,test] #should be an Ntra x Ntest matrix containing similarity values between training and test samples
   
   #perform prediction
-  prediction <- kbmtl_semisupervised_regression_variational_test(Ktest, state)
+  prediction <- kbmtl_regression_test(Ktest, state)
   
   #display the predicted probabilities
   print(prediction$Y$mu)

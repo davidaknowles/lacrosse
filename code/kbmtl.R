@@ -1,6 +1,6 @@
-# Mehmet Gonen (mehmet.gonen@gmail.com)
+# Adapted from code by Mehmet Gonen (mehmet.gonen@gmail.com)
 
-kbmtl_semisupervised_classification_variational_train <- function(K, Y, parameters) {
+kbmtl_regression_train <- function(K, Y, parameters) {
   set.seed(parameters$seed)
   
   D <- dim(K)[1]
@@ -14,18 +14,13 @@ kbmtl_semisupervised_classification_variational_train <- function(K, Y, paramete
   A <- list(mu = matrix(rnorm(D * R), D, R), sigma = array(diag(1, D, D), c(D, D, R)))
   H <- list(mu = matrix(rnorm(R * N), R, N), sigma = array(diag(1, R, R), c(R, R, N)))
   
+  epsilon <- list(alpha = matrix(parameters$alpha_epsilon + 0.5 * colSums(!is.na(Y)), T, 1), beta = matrix(parameters$beta_epsilon, T, 1))
   W <- list(mu = matrix(rnorm(R * T), R, T), sigma = array(diag(1, R, R), c(R, R, T)))
-  
-  F <- list(mu = (abs(matrix(rnorm(N * T), N, T)) + parameters$margin) * sign(Y), sigma = matrix(1, N, T))
   
   KKT <- tcrossprod(K, K)
   
-  lower <- matrix(-1e40, N, T)
-  lower[which(Y > 0)] <- +parameters$margin
-  upper <- matrix(+1e40, N, T)
-  upper[which(Y < 0)] <- -parameters$margin
-  
   for (iter in 1:parameters$iteration) {
+    cat("iteration ",iter,"\n")
     # update Lambda
     for (s in 1:R) {
       Lambda$beta[,s] <- 1 / (1 / parameters$beta_lambda + 0.5 * (A$mu[,s]^2 + diag(A$sigma[,,s])))
@@ -38,46 +33,36 @@ kbmtl_semisupervised_classification_variational_train <- function(K, Y, paramete
     # update H
     for (i in 1:N) {
       indices <- which(is.na(Y[i,]) == FALSE)
-      H$sigma[,,i] <- chol2inv(chol(diag(1 / sigma_h^2, R, R) + tcrossprod(W$mu[,indices, drop = FALSE], W$mu[,indices, drop = FALSE]) + apply(W$sigma[,,indices, drop = FALSE], 1:2, sum)))
-      H$mu[,i] <- H$sigma[,,i] %*% (crossprod(A$mu, K[,i]) / sigma_h^2 + tcrossprod(W$mu[,indices, drop = FALSE], F$mu[i, indices, drop = FALSE]))
+      H$sigma[,,i] <- chol2inv(chol(diag(1 / sigma_h^2, R, R) + tcrossprod(W$mu[,indices, drop = FALSE], W$mu[,indices, drop = FALSE] * matrix(epsilon$alpha[indices] * epsilon$beta[indices], R, length(indices), byrow = TRUE)) + apply(W$sigma[,,indices, drop = FALSE] * array(matrix(epsilon$alpha[indices] * epsilon$beta[indices], R * R, length(indices), byrow = TRUE), c(R, R, length(indices))), 1:2, sum)))
+      H$mu[,i] <- H$sigma[,,i] %*% (crossprod(A$mu, K[,i]) / sigma_h^2 + tcrossprod(W$mu[,indices, drop = FALSE], Y[i, indices, drop = FALSE] * epsilon$alpha[indices] * epsilon$beta[indices]))
     }
     
+    # update epsilon
+    for (t in 1:T) {
+      indices <- which(is.na(Y[,t]) == FALSE)
+      epsilon$beta[t] <- 1 / (1 / parameters$beta_epsilon + 0.5 * (crossprod(Y[indices, t, drop = FALSE], Y[indices, t, drop = FALSE]) - 2 * crossprod(Y[indices, t, drop = FALSE], crossprod(H$mu[,indices, drop = FALSE], W$mu[,t])) + sum((tcrossprod(H$mu[,indices, drop = FALSE], H$mu[,indices, drop = FALSE]) + apply(H$sigma[,,indices, drop = FALSE], 1:2, sum)) * (tcrossprod(W$mu[,t], W$mu[,t]) + W$sigma[,,t]))));
+    }
     # update W
     for (t in 1:T) {
       indices <- which(is.na(Y[,t]) == FALSE)
-      W$sigma[,,t] <- chol2inv(chol(diag(1 / sigma_w^2, R, R) + tcrossprod(H$mu[,indices, drop = FALSE], H$mu[,indices, drop = FALSE]) + apply(H$sigma[,,indices, drop = FALSE], 1:2, sum)))
-      W$mu[,t] <- W$sigma[,,t] %*% (H$mu[,indices] %*% F$mu[indices, t, drop = FALSE])
+      W$sigma[,,t] <- chol2inv(chol(diag(1 / sigma_w^2, R, R) + epsilon$alpha[t] * epsilon$beta[t] * (tcrossprod(H$mu[,indices, drop = FALSE], H$mu[,indices, drop = FALSE]) + apply(H$sigma[,,indices, drop = FALSE], 1:2, sum))))
+      W$mu[,t] <- W$sigma[,,t] %*% (epsilon$alpha[t] * epsilon$beta[t] * H$mu[,indices, drop = FALSE] %*% Y[indices, t, drop = FALSE])
     }
-    
-    # update F
-    output <- crossprod(H$mu, W$mu)
-    alpha_norm <- lower - output
-    beta_norm <- upper - output
-    normalization <- pnorm(beta_norm) - pnorm(alpha_norm)
-    normalization[which(normalization == 0)] <- 1
-    F$mu <- output + (dnorm(alpha_norm) - dnorm(beta_norm)) / normalization
-    F$sigma <- 1 + (alpha_norm * dnorm(alpha_norm) - beta_norm * dnorm(beta_norm)) / normalization - (dnorm(alpha_norm) - dnorm(beta_norm))^2 / normalization^2
   }
   
-  state <- list(Lambda = Lambda, A = A, W = W, parameters = parameters)
+  state <- list(Lambda = Lambda, A = A, epsilon = epsilon, W = W, parameters = parameters)
 }
 
-# Mehmet Gonen (mehmet.gonen@gmail.com)
-
-kbmtl_semisupervised_classification_variational_test <- function(K, state) {
+kbmtl_regression_test <- function(K, state) {
   N <- dim(K)[2]
   T <- dim(state$W$mu)[2]
   
   H <- list(mu = crossprod(state$A$mu, K))
   
-  F <- list(mu = crossprod(H$mu, state$W$mu), sigma = matrix(0, N, T))
+  Y <- list(mu = crossprod(H$mu, state$W$mu), sigma = matrix(0, N, T))
   for (t in 1:T) {
-    F$sigma[,t] <- 1 + diag(crossprod(H$mu, state$W$sigma[,,t]) %*% H$mu)
+    Y$sigma[,t] <- 1 / (state$epsilon$alpha[t] * state$epsilon$beta[t]) + diag(crossprod(H$mu, state$W$sigma[,,t]) %*% H$mu)
   }
   
-  pos <- 1 - pnorm((+state$parameters$margin - F$mu) / F$sigma)
-  neg <- pnorm((-state$parameters$margin - F$mu) / F$sigma)
-  P <- pos / (pos + neg)
-  
-  prediction <- list(H = H, F = F, P = P)
+  prediction <- list(H = H, Y = Y)
 }
