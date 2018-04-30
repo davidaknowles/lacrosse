@@ -19,15 +19,17 @@ sens[perm,]=NA
 x.train=x[!test,]
 y.train=scale(sens[!test,])
 
+resdir=paste0(scratch_dir,"/lacrosse/glmnet_single/")
+dir.create(resdir)
+
 require(glmnet)
-res=foreach (i=1:ncol(sens)) %dopar% {
-    print(i)
-    y=y.train[,i]
-    to.keep=! (is.nan(y) | is.na(y))
-    alpha=.5
-    cv.glmnet(x.train[to.keep,],y[to.keep],alpha=alpha) %>% coef()
+
+for(alpha in c(0,1)) {
+  foreach (i=1:ncol(sens)) %dopar% {
+      print(i)
+      y=y.train[,i]
+      to.keep=! (is.nan(y) | is.na(y))
+      cv.glmnet(x.train[to.keep,],y[to.keep],alpha=alpha) %>% coef()
+  } %>% saveRDS( file=paste0(resdir,cv.fold,"_alpha",alpha,".RData" ) )
 }
-
-save(res,file=paste0(scratch_dir,"/lacrosse/glmnet_single_",cv.fold,".RData"))
-
 

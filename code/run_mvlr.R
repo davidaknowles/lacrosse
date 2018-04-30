@@ -5,6 +5,19 @@ if (interactive()){
   cv.fold=as.integer(args[1])
 }
 
+scratch_dir="/scratch/users/dak33/"
+#scratch_dir="~"
+print(scratch_dir)
+
+resdir=paste0(scratch_dir,"/lacrosse/mvlr/")
+dir.create(resdir)
+resfile=paste0(resdir,cv.fold,".RData")
+
+if (file.exists(resfile)) {
+  cat(resfile," already exists, exiting\n")
+  quit()
+}
+
 source("load_CTRPv2.R")
 
 source("mvlr.R")
@@ -24,9 +37,6 @@ y.train=scale(sens[!test,])
 remove_na=function(g) { g[is.na(g)]=0.0; g }
 #foreach(dat=genomic_data_sub) %do% { dat[,!test] %>% t() %>% scale() %>% remove_na()  }
 
-resdir=paste0(scratch_dir,"/lacrosse/mvlr/")
-dir.create(resdir)
-
 M=3
 list(X=x.train,
      dX=ncol(x.train) %>% as.integer(),
@@ -41,4 +51,4 @@ list(X=x.train,
      dXm=array(1000,dim=M) %>% as.integer()) %>% # dimension in each view
   runMVSTAN() %>% 
   predictMVSTAN(x[test,]) %>% 
-  saveRDS(file=paste0(resdir,cv.fold,".RData"))
+  saveRDS(file=resfile)

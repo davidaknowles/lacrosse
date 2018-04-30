@@ -27,8 +27,14 @@ resdir=paste0(scratch_dir,"/lacrosse/glmnet_mgaussian/")
 dir.create(resdir)
 
 y.train[is.na(y.train)]=0
-cv.glmnet( x.train, y.train, family="mgaussian", parallel=!interactive(), nfolds = 10) %>% 
-	   coef() %>% 
-	   save(file=paste0(resdir,cv.fold,".RData"))
+
+for(alpha in c(0,0.5,1)) {
+  fn=paste0(resdir,cv.fold,"_alpha",alpha,".RData")
+  if (!file.exists(fn)) {
+    cv.glmnet( x.train, y.train, family="mgaussian", alpha=alpha, parallel=!interactive(), nfolds = 10) %>% 
+    	   coef() %>% 
+    	   saveRDS(file=fn)
+  }
+}
 
 
