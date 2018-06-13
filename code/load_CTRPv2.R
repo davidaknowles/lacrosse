@@ -43,3 +43,5 @@ genomic_data_sub = foreach(gdn=names(genomic_data)) %do% {
 } %>% set_names(mDataTypes)
 x=Reduce(rbind,genomic_data_sub) %>% t()
 x=x[common_cells,]
+
+
