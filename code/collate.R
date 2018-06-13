@@ -10,7 +10,7 @@ n.drugs=ncol(sens)
 require(glmnet)
 
 n.reps=10
-methods=9
+methods=10
 results=data.frame(matrix(NA,ncol=methods,nrow=n.reps))
 train.rmse=data.frame(matrix(NA,ncol=methods,nrow=n.reps))
 rmse=function(err) sqrt(mean(err*err))
@@ -23,7 +23,9 @@ lacrosse_dir=paste0(scratch_dir,"/lacrosse/")
 #   saveRDS(., file=fn)
 # }
 
-for (cv.fold in 1:n.reps){
+kbtml_results=readRDS("kbtml_CTRPv2.rds")
+
+foreach (cv.fold=1:n.reps) %do% {
     meth=1
 
     print(cv.fold)
@@ -43,6 +45,11 @@ for (cv.fold in 1:n.reps){
     y.adjusted=adjust.y(sens)
     train.calc=function(y.pred) rmse((y.pred-y.adjusted[!test,])[!is.na(y.adjusted[!test,])])
     test.calc=function(y.pred) rmse((y.pred-y.adjusted[test,])[!is.na(y.adjusted[test,])])
+    # correlation
+    #test.calc=function(y.pred) { 
+    #  mean( foreach(i=seq_len(ncol(y.pred)), .combine=c) %do% cor(y.pred[,i],y.adjusted[test,i], use="pairwise"), na.rm=T )
+    #}
+    
     alpha=1
     use.mrf=T
     truncate=T
@@ -66,9 +73,8 @@ for (cv.fold in 1:n.reps){
     y.pred=p$factor.loadings %*% p$B %*% t(x.train)
     y.pred=as.matrix(t(y.pred))
     train.rmse[cv.fold,meth]=train.calc(y.pred)
-    meth.name="dfa"
 
-    colnames(results)[meth]=meth.name
+    colnames(results)[meth]="dfa"
     meth=meth+1
     
     # glmnet per drug
@@ -107,7 +113,12 @@ for (cv.fold in 1:n.reps){
     print("mvlr")
     y.pred=readRDS(paste0(lacrosse_dir,"mvlr/",cv.fold,".RData"))
     results[cv.fold,meth]=test.calc(y.pred)
-    colnames(results)[meth]="mvlr"
+    colnames(results)[meth]="MVLR"
+    meth=meth+1
+  
+    print("kbtml")
+    results[cv.fold,meth]=test.calc(kbtml_results[[cv.fold]]$Y$mu)
+    colnames(results)[meth]="KBMTL"
     meth=meth+1
 
     results[cv.fold,meth]=test.calc(y.adjusted[test,]*0)
@@ -119,4 +130,46 @@ for (cv.fold in 1:n.reps){
 
 colnames(train.rmse)=colnames(results)
 
-#save(train.rmse,results,file="results.RData")
+foreach(i=seq_len(ncol(results)), .combine = c) %do% { t.test(results[,i], results$dfa, paired = T)$p.value }
+
+my_gsub=function(g,a) {
+  for(i in seq_along(a)) { g=gsub(names(a)[i],a[i],g) }
+  g
+}
+
+theme_set(theme_bw(base_size = 14))
+
+results %>% 
+  gather(method, cor, -mean) %>% 
+   ggplot(aes(method, cor)) + geom_boxplot()+ theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+to_plot = results %>% set_colnames(colnames(results) %>% 
+                           my_gsub(c("dfa"="Lacrosse",
+                                     "kbmtl"="KBMTL", 
+                                     "mvlr"="MVLR", 
+                                     "L1_0.5"="Elastic Net",
+                                     "L1_1"="Lasso",
+                                     "L1_0"="Ridge", 
+                                     "mgaussian_0.5"="Group ENet",
+                                     "mgaussian_0"="Ignore", # should be same as Ridge, is worse for some reason? 
+                                     "mgaussian_1"="Group Lasso"))) %>% 
+  mutate(fold=1:n()) %>%
+  gather(method, rmse, -mean, -fold) %>% 
+  filter(method!="Ignore") %>% 
+  mutate(pve=1-rmse/mean, 
+         method=factor(method, c("Ridge", "Elastic Net", "Lasso", "Group ENet", "Group Lasso", "KBMTL", "MVLR", "Lacrosse"))) 
+  
+to_plot %>%   
+  ggplot(aes(method, pve * 100, label=fold)) + geom_boxplot(outlier.shape = NA) + 
+  geom_text(position = position_jitter(width=0.2)) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ylab("Percent variance explained") + xlab(NULL)
+ggsave("../figures/CTRPv2_pve.pdf", width=6, height=4)
+
+to_plot %>% mutate(pve=100*pve) %>% group_by(method) %>% summarize(m=mean(pve),s=sd(pve)) %>% 
+  ggplot(aes(method, m, ymin=m-s, ymax=m+s)) + geom_bar(stat="identity") + geom_errorbar(width=0.5) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) + 
+  ylab("Percent variance explained")  + scale_y_continuous(breaks=c(2.5,5,7.5,10))+ xlab(NULL) + coord_cartesian(ylim=c(2.5,10)) 
+ggsave("../figures/CTRPv2_pve_clean.pdf", width=5, height=4)
+
+t.test(results$L1_0, results$mgaussian_0, paired = T)
+t.test(results$L1_0.5, results$mgaussian_0, paired = T)
+
