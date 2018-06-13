@@ -62,6 +62,11 @@ for (i in 1:num_drugs) {
     ests[i]=test$estimate
 }
 
+from_0_pv=foreach(i=1:ncol(f), .combine = c) %do% {
+  t.test(f[,i]) %$% p.value
+}
+most_non_0=which.min(from_0_pv)
+
 clustersDir="clusters/"
 dir.create(clustersDir)
 maxmax=0
@@ -77,7 +82,7 @@ meta=foreach (i=1:ncol(swap.f), .combine = bind_rows) %do% {
     fn=feature.names[b[i,]!=0]
     fn=fn[s$ix]
     print(fn)
-    drugsInCluster=rownames(swap.f)[swap.f[,i]!=0]
+    drugsInCluster=rownames(swap.f)[ abs(swap.f[,i]) >= 1]
     pvals=matrix(NA,length(fn),length(drugsInCluster))
     rownames(pvals)=fn
     colnames(pvals)=drugsInCluster
