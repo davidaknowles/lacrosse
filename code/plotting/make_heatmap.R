@@ -70,7 +70,7 @@ colnames(x)=feature.names
 maxlog10p=10
 #niceCols <- colorRampPalette(c("lightyellow", "red"), space = "rgb")(100)
 niceCols <- colorRampPalette(c("blue", "white", "red"), space = "rgb")(100)
-for (i in 1:ncol(swap.f)){
+meta=foreach (i=1:ncol(swap.f), .combine = bind_rows) %do% {
     bf=b[i,b[i,]!=0]
     s=sort.int(abs(bf),index.return = T,decreasing=T)
     bf=bf[s$ix]
@@ -88,8 +88,8 @@ for (i in 1:ncol(swap.f)){
             pvals[feat,drug]=ct$p.value
             ests[feat,drug]=ct$estimate
         }
-    if (nrow(pvals)==0) next
-    pdf(paste0(clustersDir,"plot",i,".pdf"),width=2+.23*length(drugsInCluster),height=1.5+.25*length(fn))
+    if (nrow(pvals)==0) return(NULL)
+    pdf(paste0(clustersDir,"plot",i,".pdf"),width=2+.2*length(drugsInCluster),height=10.5+.25*length(fn))
     y=-log10(t(pvals))
     ests=t(ests)
     yscaled=pmin(y,maxlog10p)
@@ -99,10 +99,7 @@ for (i in 1:ncol(swap.f)){
     latticePlot=levelplot(yscaled,col.regions = niceCols,scales=list(x=list(rot=90)),xlab="",ylab="",at=seq(-maxlog10p,maxlog10p,length.out = 100))
     print(latticePlot)
     dev.off()
-    print(max(-log10(pvals)))
-    maxmax=max(maxmax,-log10(pvals))
-                                        #cat ("Press [enter] to continue")
-                                        #line <- readline()
+    data.frame(max_nlp=max(-log10(pvals)), num_drugs=length(drugsInCluster), num_features=length(fn))
 }
 rownames(swap.f)=colnames(sens)
 
