@@ -3,22 +3,23 @@ source("load_CTRPv2.R")
 sens=y
 feature.names=colnames(x)
 
-require(RColorBrewer)
-if (1){
-    load("results_dnsfa_all1_alpha1mrfTRUEtruncateTRUE.RData")
-    f=r$best.params$factor.loadings
-    to.keep=colSums(f!=0.0)>1
-    f=f[,to.keep]
-    b=r$best.params$B[to.keep,]
-} else {
-    load("samples_dnsfa_long_alpha1mrfTRUEtruncateTRUE/sample3900.RData")
-    f=as.matrix(param$factor.loadings)
-    to.keep=colSums(f!=0.0)>0
-    f=f[,to.keep]
-    b=as.matrix(param$B[to.keep,])
-}
 col.map = colorRampPalette(c("black", "blue"))(256)
 
+
+require(RColorBrewer)
+
+max_ll=foreach(i=1:10, .combine = c) %do% {
+  load(paste0("results_dnsfa_all",i,"_alpha1mrfTRUEtruncateTRUE.RData"))
+  max(r$loglikelihood)
+}
+
+load("results_dnsfa_all1_alpha1mrfTRUEtruncateTRUE.RData")
+#f=r$best.params$factor.loadings
+f=r$final.params$factor.loadings
+to.keep=colSums(f!=0.0)>1
+f=f[,to.keep]
+#b=r$best.params$B[to.keep,]
+b=r$final.params$B[to.keep,]
 
 #f[,2:ncol(f)]=-f[,2:ncol(f)]
 #to.keep=colSums(f!=0)>1
@@ -52,15 +53,6 @@ for (i in 1:ncol(f)){
 }
 #colnames(swap.f)=ncol(f):1
 den=as.dendrogram(hclust(dist(abs(swap.f)),method="ward"))
-                                        #oldm=par("mar")
-num_drugs=ncol(sens)
-p.values=numeric(num_drugs)
-ests=numeric(num_drugs)
-for (i in 1:num_drugs) {
-    test=cor.test(sens[,i],ge[,"FBXW8"],method="spearman")
-    p.values[i]=test$p.value
-    ests[i]=test$estimate
-}
 
 from_0_pv=foreach(i=1:ncol(f), .combine = c) %do% {
   t.test(f[,i]) %$% p.value
@@ -116,7 +108,7 @@ for (i in 1:nrow(m)){
     colnames(sens)[colnames(sens)==m$V1[i]]=m$V2[i]
 }
 
-                                        #m=oldm
+#m=oldm
 #m[3]=m[3]+2.0
 #par(mar=m)
 fig.dir="~/Dropbox/ccle/figures/"
