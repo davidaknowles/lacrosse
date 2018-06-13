@@ -1,10 +1,11 @@
-load("all_data.RData")
-x=cbind(ge,cnv,onco)
-feature.names=c(paste(colnames(ge),"e",sep=""),paste(colnames(cnv),"n",sep=""),paste(colnames(onco),"m",sep=""))
+source("load_CTRPv2.R")
+
+sens=y
+feature.names=colnames(x)
 
 require(RColorBrewer)
 if (1){
-    load("results_dnsfa1alpha1mrfTRUE.RData")
+    load("results_dnsfa_all1_alpha1mrfTRUEtruncateTRUE.RData")
     f=r$best.params$factor.loadings
     to.keep=colSums(f!=0.0)>1
     f=f[,to.keep]
@@ -17,8 +18,6 @@ if (1){
     b=as.matrix(param$B[to.keep,])
 }
 col.map = colorRampPalette(c("black", "blue"))(256)
-
-
 
 
 #f[,2:ncol(f)]=-f[,2:ncol(f)]
@@ -54,15 +53,16 @@ for (i in 1:ncol(f)){
 #colnames(swap.f)=ncol(f):1
 den=as.dendrogram(hclust(dist(abs(swap.f)),method="ward"))
                                         #oldm=par("mar")
-p.values=numeric(24)
-ests=numeric(24)
-for (i in 1:24) {
+num_drugs=ncol(sens)
+p.values=numeric(num_drugs)
+ests=numeric(num_drugs)
+for (i in 1:num_drugs) {
     test=cor.test(sens[,i],ge[,"FBXW8"],method="spearman")
     p.values[i]=test$p.value
     ests[i]=test$estimate
 }
 
-clustersDir="~/Dropbox/ccle/clusters_two_color/"
+clustersDir="clusters/"
 dir.create(clustersDir)
 maxmax=0
 require(lattice)
@@ -88,6 +88,7 @@ for (i in 1:ncol(swap.f)){
             pvals[feat,drug]=ct$p.value
             ests[feat,drug]=ct$estimate
         }
+    if (nrow(pvals)==0) next
     pdf(paste0(clustersDir,"plot",i,".pdf"),width=2+.23*length(drugsInCluster),height=1.5+.25*length(fn))
     y=-log10(t(pvals))
     ests=t(ests)
