@@ -3,18 +3,28 @@ source("load_CTRPv2.R")
 sens=y
 feature.names=colnames(x)
 
+x=scale(x)
+x[is.na(x) | is.nan(x)]=0.0
+
 col.map = colorRampPalette(c("black", "blue"))(256)
 
 
 require(RColorBrewer)
 
 max_ll=foreach(i=1:10, .combine = c) %do% {
-  load(paste0("results_dnsfa_all",i,"_alpha1mrfTRUEtruncateTRUE.RData"))
-  max(r$loglikelihood)
+  fn=paste0("results_no_cv_alpha0.1/results_dnsfa_all",i,"_alpha0.1mrfTRUEtruncateTRUE.RData")
+  if (file.exists(fn)) {
+    load(fn) 
+    max(r$loglikelihood)
+  } else { -Inf }
 }
+best_run=which.max(max_ll)
 
-load("results_dnsfa_all1_alpha1mrfTRUEtruncateTRUE.RData")
+fn=paste0("results_no_cv_alpha0.1/results_dnsfa_all",best_run,"_alpha0.1mrfTRUEtruncateTRUE.RData")
+#load(paste0("results_dnsfa_all",best_run,"_alpha1mrfTRUEtruncateTRUE.RData"))
 #f=r$best.params$factor.loadings
+
+
 f=r$final.params$factor.loadings
 to.keep=colSums(f!=0.0)>1
 f=f[,to.keep]
@@ -59,7 +69,7 @@ from_0_pv=foreach(i=1:ncol(f), .combine = c) %do% {
 }
 most_non_0=which.min(from_0_pv)
 
-clustersDir="clusters/"
+clustersDir="clusters_alpha0.1/"
 dir.create(clustersDir)
 maxmax=0
 require(lattice)
@@ -76,6 +86,7 @@ meta=foreach (i=1:ncol(swap.f), .combine = bind_rows) %do% {
     print(fn)
     drugsInCluster=rownames(swap.f)[ abs(swap.f[,i]) >= 1]
     pvals=matrix(NA,length(fn),length(drugsInCluster))
+    print(dim(pvals))
     rownames(pvals)=fn
     colnames(pvals)=drugsInCluster
     ests=pvals
@@ -91,7 +102,7 @@ meta=foreach (i=1:ncol(swap.f), .combine = bind_rows) %do% {
     ests=t(ests)
     yscaled=pmin(y,maxlog10p)
     yscaled[ests<0]=-yscaled[ests<0]
-    rownames(yscaled)=rownames(y)
+    rownames(yscaled)=substr(rownames(y),1,40) 
     colnames(yscaled)=colnames(y)
     latticePlot=levelplot(yscaled,col.regions = niceCols,scales=list(x=list(rot=90)),xlab="",ylab="",at=seq(-maxlog10p,maxlog10p,length.out = 100))
     print(latticePlot)
@@ -146,4 +157,41 @@ col.map = colorRampPalette(c("white", "black"))(2)
 heatmap(a,Colv=den,col=col.map,Rowv=NA,margins=c(18,5))
 #dev.off()
 
-                               
+
+
+meta=foreach (i=1:ncol(swap.f)) %do% {
+  bf=b[i,b[i,]!=0]
+  s=sort.int(abs(bf),index.return = T,decreasing=T)
+  bf=bf[s$ix]
+  fn=feature.names[b[i,]!=0]
+  fn=fn[s$ix]
+  print(fn)
+  drugsInCluster=rownames(swap.f)[ abs(swap.f[,i]) >= 1]
+}
+
+
+cor_f=cor(as.matrix(f))
+temp=abs(as.matrix(f)) > 1.
+
+
+jacc=( t(temp) %*% temp ) / ( nrow(temp) - (1-t(temp)) %*% (1-temp))
+
+
+
+max_ll=foreach(i=1:10, .combine = c) %do% {
+  load(paste0("results_dnsfa_all",i,"_alpha1mrfTRUEtruncateTRUE.RData"))
+  max(r$loglikelihood)
+}
+best_run=which.max(max_ll)
+
+load(paste0("results_dnsfa_all",1,"_alpha1mrfTRUEtruncateTRUE.RData"))
+f2=r$final.params$factor.loadings
+
+temp2=abs(as.matrix(f2)) > 1.
+
+jacc=( t(temp) %*% temp2 ) / ( nrow(temp) - (1-t(temp)) %*% (1-temp2))
+hist(jacc)
+heatmap(jacc)
+max(jacc)
+
+co=cor( as.matrix(f), as.matrix(f2))
