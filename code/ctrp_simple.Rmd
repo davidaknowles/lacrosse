@@ -111,8 +111,8 @@ qplot( sv2$u["rna:CEBPD",], sv2$v["Panobinostat",], label=1:30, geom="text") + g
 ```
 
 ```{r}
-y_here=y[,drug_index]
-not_na=!is.na(y_here)
-y_here=y_here[not_na]
-x_here=x[not_na,]
+y_here=y[,"Panobinostat"]
+x_here=x[,"rna:CEBPD"]
+not_na=!is.na(y_here) & !is.na(x_here)
+cor(y_here[not_na], x_here)
 ```
