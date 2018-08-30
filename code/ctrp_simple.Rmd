@@ -58,7 +58,7 @@ require(RColorBrewer)
 clustersDir="simple_clusters_again/"
 dir.create(clustersDir)
 
-foreach(pc_index=2:length(sv2$d)) %do% {
+foreach(pc_index=1:length(sv2$d)) %do% {
   clus_feats=abs(sv2$u[,pc_index]) > feat_cutoff
   clus_drugs=abs(sv2$v[,pc_index]) > drug_cutoff
   
@@ -66,7 +66,7 @@ foreach(pc_index=2:length(sv2$d)) %do% {
   
   clus_coef = clus_coef[ , !grepl( "mol/mol" , colnames(clus_coef) ) ]
   
-  pdf(paste0(clustersDir,"plot",pc_index,".pdf"),width=2+.2*ncol(clus_coef),height=2+.2*nrow(clus_coef))
+  pdf(paste0(clustersDir,"LC",pc_index,".pdf"),width=2+.2*ncol(clus_coef),height=2+.2*nrow(clus_coef))
   heatmap.2(clus_coef, col=rev(brewer.pal(11,"RdBu")), trace="none", key=F, dendrogram="none", lwi=c(0.01,1), lhei=c(0.01,1), margins=c(10,8))
   dev.off()
   
