@@ -25,7 +25,9 @@ saveRDS(b, "l2coef.rds")
 ```
 
 ```{r}
+require(irlba)
 b=readRDS("l2coef.rds")
+colnames(b)=colnames(y)
 sv=svd(b)
 sv2=irlba(b,30)
 
@@ -39,8 +41,10 @@ hist(sv2$v[,2]) # which drugs. Spread around 0.
 ```
 
 ```{r}
-feat_cutoff=3 * sqrt(1/3000)
-drug_cutoff=2.5 * sqrt(1/545)
+#feat_cutoff=3 * sqrt(1/3000)
+feat_cutoff=0.05
+drug_cutoff=0.075
+#drug_cutoff=2.5 * sqrt(1/545)
 foreach(pc_index=seq_along(sv2$d), .combine = bind_rows) %do% {
   data.frame( pc_index=pc_index, 
               num_feat=sum(abs(sv2$u[,pc_index]) > feat_cutoff), 
@@ -50,7 +54,8 @@ foreach(pc_index=seq_along(sv2$d), .combine = bind_rows) %do% {
 
 ```{r eval=F}
 require(gplots)
-clustersDir="simple_clusters/"
+require(RColorBrewer)
+clustersDir="simple_clusters_again/"
 dir.create(clustersDir)
 
 foreach(pc_index=2:length(sv2$d)) %do% {
@@ -62,7 +67,7 @@ foreach(pc_index=2:length(sv2$d)) %do% {
   clus_coef = clus_coef[ , !grepl( "mol/mol" , colnames(clus_coef) ) ]
   
   pdf(paste0(clustersDir,"plot",pc_index,".pdf"),width=2+.2*ncol(clus_coef),height=2+.2*nrow(clus_coef))
-  heatmap.2(clus_coef, col=rev(brewer.pal(21,"RdBu")), trace="none", key=F, dendrogram="none", lwi=c(0.01,1), lhei=c(0.01,1), margins=c(10,8))
+  heatmap.2(clus_coef, col=rev(brewer.pal(11,"RdBu")), trace="none", key=F, dendrogram="none", lwi=c(0.01,1), lhei=c(0.01,1), margins=c(10,8))
   dev.off()
   
   # mean(clus_coef^2) / mean(b^2)
@@ -99,3 +104,15 @@ require(Matrix)
 saveRDS(list(B=Matrix(B, sparse = TRUE), factors=factors, factor_loadings=Matrix(factor_loadings, sparse = TRUE)), file="ctrp_simple_init.rds")
 ```
 
+```{r}
+rownames(sv2$u)=rownames(b)
+rownames(sv2$v)=colnames(b)
+qplot( sv2$u["rna:CEBPD",], sv2$v["Panobinostat",], label=1:30, geom="text") + geom_vline(xintercept = feat_cutoff) + geom_hline(yintercept = drug_cutoff)
+```
+
+```{r}
+y_here=y[,drug_index]
+not_na=!is.na(y_here)
+y_here=y_here[not_na]
+x_here=x[not_na,]
+```
